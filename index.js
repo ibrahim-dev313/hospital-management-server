@@ -29,6 +29,7 @@ async function run() {
         await client.connect();
 
         const usersCollection = client.db('diagnostic-center').collection('users')
+        const testCollection = client.db('diagnostic-center').collection('tests')
         /* User Related API */
         app.post("/users", async (req, res) => {
             const user = req.body;
@@ -85,6 +86,56 @@ async function run() {
                 console.error(error);
             }
         });
+
+        /* Test Related API */
+        app.post("/test", async (req, res) => {
+            const test = req.body;
+            //   console.log(user);
+            const result = await testCollection.insertOne(test);
+            console.log(result);
+            res.send(result);
+        });
+        app.get("/tests", async (req, res) => {
+            // const email = req.query.email;
+            const tests = await testCollection.find().toArray()
+            res.send(tests)
+        })
+        app.put("/tests/:id", async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const data = req.body;
+            const { availableSlots, testDate, testDescription, testImage, testName, _id } = data
+            // console.log("id", id, data);
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const updatedTest = {
+                $set: {
+                    availableSlots, testDate, testDescription, testImage, testName
+
+                },
+            };
+
+            const result = await testCollection.updateOne(filter, updatedTest, options);
+            res.send(result);
+            console.log(result);
+            // console.log(availableSlots);
+
+        });
+        app.delete("/test/:id", async (req, res) => {
+            const id = req.params.id;
+            console.log("delete", id);
+            const query = {
+                _id: new ObjectId(id),
+            };
+            const result = await testCollection.deleteOne(query);
+            console.log(result);
+            res.send(result);
+        });
+
+
+
+
+
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log("Pinged MongoDB!");
