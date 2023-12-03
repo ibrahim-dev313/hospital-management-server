@@ -5,10 +5,14 @@ require("dotenv").config()
 
 
 const app = express()
+app.use(cors({
+    origin: ["https://alshifa-diagnostics-mi1357.netlify.app", "https://diagnostic-center-a87d3.firebaseapp.com", "http://localhost:5173"],
+    credentials: true
+}));
+
 const port = process.env.PORT || 5000
 const stripe = require("stripe")(process.env.STRIPE_SECRET);
 app.use(express.json())
-app.use(cors())
 
 const uri = `mongodb+srv://${process.env.USER}:${process.env.PASS}@cluster0.50cvwuz.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -32,6 +36,8 @@ async function run() {
         const testCollection = client.db('diagnostic-center').collection('tests')
         const bannerCollection = client.db('diagnostic-center').collection('banners')
         const reservationCollection = client.db('diagnostic-center').collection('reservations')
+        const reccommendationsCollection = client.db('diagnostic-center').collection('reccommendations')
+
         /* User Related API */
         app.post("/users", async (req, res) => {
             const user = req.body;
@@ -92,11 +98,18 @@ async function run() {
         /* Test Related API */
         app.post("/test", async (req, res) => {
             const test = req.body;
-            //   console.log(user);
-            const result = await testCollection.insertOne(test);
+
+
+            const testData = {
+                ...test,
+                totalBooking: 0,
+            };
+            console.log(testData);
+            const result = await testCollection.insertOne(testData);
             console.log(result);
             res.send(result);
         });
+
         app.get("/tests", async (req, res) => {
             // const email = req.query.email;
             const tests = await testCollection.find().toArray()
@@ -142,7 +155,7 @@ async function run() {
             console.log(result);
             res.send(result);
         });
-        app.put("/confirm-payment", async (req, res) => {
+        app.put("/confirm", async (req, res) => {
             const { testId } = req.body;
 
             try {
@@ -150,18 +163,12 @@ async function run() {
                 const filter = { _id: new ObjectId(testId) };
 
                 // Decrement availableSlots by 1
-                const update = { $inc: { availableSlots: -1 } };
-                const options = { upsert: false };
+                const update = { $inc: { availableSlots: -1, totalBooking: 1 } };
+                const options = { upsert: true };
 
-                const result = await testCollection.updateOne(filter, update);
+                const result = await testCollection.updateOne(filter, update, options);
 
-                if (result.modifiedCount === 1) {
-                    // If the update was successful, send a success response
-                    res.send({ success: true, message: "Booking successful!" });
-                } else {
-                    // If the update failed, send an error response
-                    res.status(500).send({ success: false, message: "Failed to update available slots." });
-                }
+                res.send(result)
             } catch (error) {
                 console.error("Error updating available slots:", error);
                 res.status(500).send({ success: false, message: "Internal server error." });
@@ -257,6 +264,12 @@ async function run() {
             res.send(result);
         });
 
+        app.get("/reccommendations", async (req, res) => {
+            // const email = req.query.email;
+            const tests = await reccommendationsCollection.find().toArray()
+            res.send(tests)
+        })
+
 
 
         /* Stripe Api */
@@ -285,8 +298,8 @@ async function run() {
         })
 
         // Send a ping to confirm a successful connection
-        await client.db("admin").command({ ping: 1 });
-        console.log("Pinged MongoDB!");
+        // await client.db("admin").command({ ping: 1 });
+        // console.log("Pinged MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
