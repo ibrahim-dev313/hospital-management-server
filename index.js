@@ -6,7 +6,7 @@ require("dotenv").config()
 
 const app = express()
 app.use(cors({
-    origin: ["https://alshifa-diagnostics-mi1357.netlify.app", "https://diagnostic-center-a87d3.firebaseapp.com", "http://localhost:5173"],
+    origin: ["https://alshifa-diagnostics-mi1357.netlify.app", "https://diagnostic-center-a87d3.firebaseapp.com", "http://localhost:5173", "https://diagnostic-center-a87d3.web.app"],
     credentials: true
 }));
 
@@ -112,7 +112,7 @@ async function run() {
 
         app.get("/tests", async (req, res) => {
             // const email = req.query.email;
-            const tests = await testCollection.find().toArray()
+            const tests = await testCollection.find().sort({ totalBooking: 1 }).toArray()
             res.send(tests)
         })
         app.get("/test/:id", async (req, res) => {
